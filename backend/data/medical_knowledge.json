@@ -1,0 +1,28 @@
+{
+  "documents": [
+    {
+      "content": "Type 2 diabetes: screen with HbA1c or fasting glucose; first-line metformin when tolerated; lifestyle counseling on diet and exercise; monitor for neuropathy, nephropathy, and retinopathy; cardiology referral for ASCVD risk.",
+      "metadata": { "source": "demo", "topic": "diabetes", "type": "medical" }
+    },
+    {
+      "content": "Hypertension: confirm with repeated measurements; initial labs; first-line options include thiazide diuretic, ACE inhibitor, ARB, or CCB depending on comorbidities; goal BP individualized; lifestyle sodium reduction.",
+      "metadata": { "source": "demo", "topic": "hypertension", "type": "medical" }
+    },
+    {
+      "content": "Asthma: peak flow and spirometry; inhaled corticosteroids for persistent asthma; action plan for exacerbations; refer to pulmonology if uncontrolled or frequent ER visits.",
+      "metadata": { "source": "demo", "topic": "asthma", "type": "medical" }
+    },
+    {
+      "content": "Chest pain triage: consider ACS until proven otherwise; ECG and troponins when indicated; red flags include diaphoresis, radiation, syncope — emergency evaluation.",
+      "metadata": { "source": "demo", "topic": "cardiology", "type": "medical" }
+    },
+    {
+      "content": "Chronic headache: red flags include thunderclap onset, focal deficits, fever — imaging and urgent evaluation; migraine management may include prophylaxis and abortive therapy.",
+      "metadata": { "source": "demo", "topic": "neurology", "type": "medical" }
+    },
+    {
+      "content": "Credentialing policy: physicians must present government-issued photo ID and medical license; verify NPI and board certification; record specialty and contact for directory services.",
+      "metadata": { "source": "policy", "topic": "credentialing", "type": "doctor" }
+    }
+  ]
+}

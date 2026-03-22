@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Patient · Healthcare Planning Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="top-nav">
+      <span class="brand">Patient</span>
+      <nav class="nav-links"><a href="/dashboard.html" class="btn btn-ghost">Dashboard</a></nav>
+    </header>
+    <main class="container" style="max-width: 640px">
+      <h1>Symptom check</h1>
+      <p class="muted">
+        Describe what you are experiencing. The app uses retrieval from a medical knowledge index plus an LLM (when configured) to
+        suggest specialties and general education — not a diagnosis.
+      </p>
+
+      <div class="card">
+        <div class="form-group">
+          <label for="sym">Symptoms</label>
+          <textarea id="sym" placeholder="e.g. Thirst and frequent urination for two weeks; fatigue."></textarea>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-go">Get suggestions</button>
+      </div>
+
+      <div class="loader-wrap" id="load">
+        <div class="spinner"></div>
+        <span>Analyzing…</span>
+      </div>
+
+      <div class="panel hidden" id="out">
+        <p><span class="confidence-badge">Confidence: <span id="conf"></span></span></p>
+        <h3 style="margin-top: 0">Suggested specialists</h3>
+        <ul id="spec"></ul>
+        <h3>Recommendations</h3>
+        <ul id="rec"></ul>
+        <p class="muted" id="disc"></p>
+      </div>
+      <p id="err" class="error hidden"></p>
+    </main>
+    <footer class="site-footer">Emergency? Call local emergency services.</footer>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+      (async () => {
+        const s = await requireAuth();
+        if (!s || !requireRole(s, "patient", "/dashboard.html")) return;
+
+        document.getElementById("btn-go").addEventListener("click", async () => {
+          const symptoms = document.getElementById("sym").value.trim();
+          const load = document.getElementById("load");
+          const err = document.getElementById("err");
+          err.classList.add("hidden");
+          document.getElementById("out").classList.add("hidden");
+          load.classList.add("active");
+          try {
+            const r = await symptomCheck(symptoms);
+            document.getElementById("out").classList.remove("hidden");
+            document.getElementById("conf").textContent = r.confidence != null ? r.confidence : "—";
+            const su = document.getElementById("spec");
+            su.innerHTML = "";
+            (r.suggested_specialists || []).forEach((x) => {
+              const li = document.createElement("li");
+              li.textContent = x;
+              su.appendChild(li);
+            });
+            const re = document.getElementById("rec");
+            re.innerHTML = "";
+            (r.recommendations || []).forEach((x) => {
+              const li = document.createElement("li");
+              li.textContent = x;
+              re.appendChild(li);
+            });
+            document.getElementById("disc").textContent = r.disclaimer || "";
+          } catch (e) {
+            err.textContent = e.message || String(e);
+            err.classList.remove("hidden");
+          } finally {
+            load.classList.remove("active");
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

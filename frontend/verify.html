@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ID Verification · Healthcare Planning Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="top-nav">
+      <a href="/doctor.html" class="brand">← Doctor</a>
+      <nav class="nav-links"><a href="/dashboard.html" class="btn btn-ghost">Dashboard</a></nav>
+    </header>
+    <main class="container" style="max-width: 720px">
+      <h1>Doctor ID verification</h1>
+      <p class="muted">Upload a clear image of an ID or license. OCR extracts fields; verification uses confidence and field coverage.</p>
+
+      <div class="card">
+        <div class="form-group">
+          <label for="file">ID image</label>
+          <input type="file" id="file" accept="image/*" />
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-upload">Upload</button>
+        <button type="button" class="btn" id="btn-verify" disabled>Run OCR & verify</button>
+        <p id="upload-msg" class="muted"></p>
+      </div>
+
+      <div class="loader-wrap" id="load">
+        <div class="spinner"></div>
+        <span>Processing OCR…</span>
+      </div>
+
+      <div class="panel hidden" id="out">
+        <h3 style="margin-top: 0">Result</h3>
+        <p><strong>Status:</strong> <span id="v-status"></span></p>
+        <p><span class="confidence-badge">Combined confidence: <span id="v-conf"></span>%</span> (threshold <span id="v-th"></span>%)</p>
+        <h4>Extracted fields</h4>
+        <div class="json-view" id="v-fields"></div>
+        <h4>Raw OCR</h4>
+        <div class="json-view" id="v-raw"></div>
+      </div>
+      <p id="err" class="error hidden"></p>
+    </main>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+      let lastPath = null;
+      (async () => {
+        const s = await requireAuth();
+        if (!s || !requireRole(s, "doctor", "/dashboard.html")) return;
+
+        const load = document.getElementById("load");
+        const btnVerify = document.getElementById("btn-verify");
+
+        document.getElementById("btn-upload").addEventListener("click", async () => {
+          const f = document.getElementById("file").files[0];
+          if (!f) {
+            alert("Choose a file first.");
+            return;
+          }
+          document.getElementById("err").classList.add("hidden");
+          load.classList.add("active");
+          try {
+            const r = await uploadId(f);
+            lastPath = r.path;
+            btnVerify.disabled = false;
+            document.getElementById("upload-msg").textContent = "Uploaded. You can run verification.";
+          } catch (e) {
+            document.getElementById("err").textContent = e.message;
+            document.getElementById("err").classList.remove("hidden");
+          } finally {
+            load.classList.remove("active");
+          }
+        });
+
+        document.getElementById("btn-verify").addEventListener("click", async () => {
+          document.getElementById("err").classList.add("hidden");
+          load.classList.add("active");
+          try {
+            const r = await verifyId(lastPath);
+            document.getElementById("out").classList.remove("hidden");
+            document.getElementById("v-status").textContent = r.verification_status;
+            document.getElementById("v-conf").textContent = r.combined_confidence;
+            document.getElementById("v-th").textContent = r.threshold;
+            document.getElementById("v-fields").textContent = JSON.stringify(r.extracted.fields, null, 2);
+            document.getElementById("v-raw").textContent = r.extracted.raw_text || "(empty)";
+          } catch (e) {
+            document.getElementById("err").textContent = e.message;
+            document.getElementById("err").classList.remove("hidden");
+          } finally {
+            load.classList.remove("active");
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

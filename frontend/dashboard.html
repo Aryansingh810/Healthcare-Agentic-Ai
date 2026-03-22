@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard · Healthcare Planning Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="top-nav">
+      <span class="brand">Dashboard</span>
+      <nav class="nav-links">
+        <span id="who" class="muted"></span>
+        <button type="button" class="btn btn-ghost" id="btn-out">Log out</button>
+      </nav>
+    </header>
+    <main class="container">
+      <p class="pill">Choose a workspace</p>
+      <h1 style="letter-spacing: -0.03em">Where do you want to go?</h1>
+      <p class="muted" style="max-width: 520px">
+        Your account has a primary role, but you can open either card to match how you are using the demo. Doctor tools require a
+        doctor account; patient tools require a patient account.
+      </p>
+      <div class="card-grid" style="margin-top: 2rem">
+        <article class="card">
+          <h2>Doctor</h2>
+          <p>Verify ID with OCR, review appointments, access patient queries, and run the Planner Agent.</p>
+          <button type="button" class="btn btn-primary" id="go-doctor">Open doctor workspace</button>
+        </article>
+        <article class="card">
+          <h2>Patient</h2>
+          <p>Describe symptoms for specialist suggestions and basic education using the knowledge base.</p>
+          <button type="button" class="btn btn-primary" id="go-patient">Open patient workspace</button>
+        </article>
+      </div>
+    </main>
+    <footer class="site-footer"><a href="/">Home</a></footer>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+      (async () => {
+        const s = await requireAuth();
+        if (!s) return;
+        document.getElementById("who").textContent = s.username + " · " + s.role;
+
+        document.getElementById("go-doctor").addEventListener("click", () => {
+          if (s.role !== "doctor") {
+            alert("Log in with a doctor account to use doctor tools.");
+            return;
+          }
+          window.location.href = "/doctor.html";
+        });
+        document.getElementById("go-patient").addEventListener("click", () => {
+          if (s.role !== "patient") {
+            alert("Log in with a patient account to use patient tools.");
+            return;
+          }
+          window.location.href = "/patient.html";
+        });
+
+        document.getElementById("btn-out").addEventListener("click", async () => {
+          await logout();
+          window.location.href = "/login.html";
+        });
+      })();
+    </script>
+  </body>
+</html>

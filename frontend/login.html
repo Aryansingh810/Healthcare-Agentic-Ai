@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login · Healthcare Planning Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="top-nav">
+      <a href="/" class="brand">Healthcare Planning Assistant</a>
+      <nav class="nav-links"><a href="/" class="btn btn-ghost">Home</a></nav>
+    </header>
+    <main class="container" style="max-width: 440px">
+      <div class="tabs">
+        <button type="button" class="tab active" id="tab-login" data-tab="login">Log in</button>
+        <button type="button" class="tab" id="tab-signup" data-tab="signup">Sign up</button>
+      </div>
+      <div class="card">
+        <form id="form-login" class="auth-form">
+          <h2 style="margin-top: 0">Welcome back</h2>
+          <div class="form-group">
+            <label for="login-user">Username</label>
+            <input type="text" id="login-user" name="username" autocomplete="username" required />
+          </div>
+          <div class="form-group">
+            <label for="login-pass">Password</label>
+            <input type="password" id="login-pass" name="password" autocomplete="current-password" required />
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%">Log in</button>
+          <p id="login-err" class="error hidden"></p>
+        </form>
+        <form id="form-signup" class="auth-form hidden">
+          <h2 style="margin-top: 0" id="signup">Create account</h2>
+          <div class="form-group">
+            <label for="su-user">Username</label>
+            <input type="text" id="su-user" name="username" autocomplete="username" required />
+          </div>
+          <div class="form-group">
+            <label for="su-pass">Password</label>
+            <input type="password" id="su-pass" name="password" autocomplete="new-password" required />
+          </div>
+          <div class="form-group">
+            <label for="su-role">Role</label>
+            <select id="su-role" name="role" required>
+              <option value="patient">Patient</option>
+              <option value="doctor">Doctor</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%">Sign up</button>
+          <p id="signup-err" class="error hidden"></p>
+        </form>
+      </div>
+      <p class="muted" style="text-align: center">After sign-in you will use the dashboard to open Doctor or Patient tools.</p>
+    </main>
+    <footer class="site-footer">Local SQLite auth — no social login.</footer>
+    <script src="/js/api.js"></script>
+    <script>
+      const tabLogin = document.getElementById("tab-login");
+      const tabSignup = document.getElementById("tab-signup");
+      const formLogin = document.getElementById("form-login");
+      const formSignup = document.getElementById("form-signup");
+
+      function showTab(name) {
+        const signup = name === "signup";
+        tabLogin.classList.toggle("active", !signup);
+        tabSignup.classList.toggle("active", signup);
+        formLogin.classList.toggle("hidden", signup);
+        formSignup.classList.toggle("hidden", !signup);
+        if (signup) history.replaceState(null, "", "#signup");
+        else history.replaceState(null, "", window.location.pathname);
+      }
+      tabLogin.addEventListener("click", () => showTab("login"));
+      tabSignup.addEventListener("click", () => showTab("signup"));
+      if (window.location.hash === "#signup") showTab("signup");
+
+      formLogin.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const err = document.getElementById("login-err");
+        err.classList.add("hidden");
+        try {
+          await login({
+            username: document.getElementById("login-user").value.trim(),
+            password: document.getElementById("login-pass").value,
+          });
+          window.location.href = "/dashboard.html";
+        } catch (x) {
+          err.textContent = x.message || "Login failed";
+          err.classList.remove("hidden");
+        }
+      });
+
+      formSignup.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const err = document.getElementById("signup-err");
+        err.classList.add("hidden");
+        try {
+          await signup({
+            username: document.getElementById("su-user").value.trim(),
+            password: document.getElementById("su-pass").value,
+            role: document.getElementById("su-role").value,
+          });
+          window.location.href = "/dashboard.html";
+        } catch (x) {
+          err.textContent = x.message || "Signup failed";
+          err.classList.remove("hidden");
+        }
+      });
+    </script>
+  </body>
+</html>

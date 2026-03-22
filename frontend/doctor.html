@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doctor workspace · Healthcare Planning Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="top-nav">
+      <span class="brand">Doctor workspace</span>
+      <nav class="nav-links">
+        <a href="/dashboard.html" class="btn btn-ghost">Dashboard</a>
+        <a href="/verify.html" class="btn">ID verify</a>
+        <a href="/planner.html" class="btn btn-primary">Planner Agent</a>
+      </nav>
+    </header>
+    <main class="container">
+      <p class="pill">Mock data · OCR verification · Planner</p>
+      <h1 style="letter-spacing: -0.03em">Clinical tools</h1>
+      <p class="muted">Use ID verification before treating planner output as trusted. Appointments below are illustrative only.</p>
+
+      <div class="card-grid" style="margin-top: 1.5rem">
+        <article class="card">
+          <h3>Verification status</h3>
+          <p id="prof-line" class="muted">Loading…</p>
+        </article>
+        <article class="card">
+          <h3>Quick links</h3>
+          <p><a href="/verify.html">Upload & verify ID (OCR)</a></p>
+          <p><a href="/planner.html">Open Planner Agent</a></p>
+        </article>
+      </div>
+
+      <div class="panel">
+        <h2 style="margin-top: 0">Appointments</h2>
+        <div id="appts" class="muted">Loading…</div>
+      </div>
+
+      <div class="panel">
+        <h2 style="margin-top: 0">Patient queries (mock)</h2>
+        <div id="queries" class="muted">Loading…</div>
+      </div>
+    </main>
+    <footer class="site-footer">Planner output is decision support only.</footer>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+      (async () => {
+        const s = await requireAuth();
+        if (!s || !requireRole(s, "doctor", "/dashboard.html")) return;
+
+        try {
+          const prof = await getDoctorProfile();
+          const p = prof.profile;
+          if (!p) {
+            document.getElementById("prof-line").textContent = "No profile yet — upload an ID on the verify page.";
+          } else {
+            document.getElementById("prof-line").innerHTML =
+              (p.verified ? '<span class="success">VERIFIED</span>' : "Not verified") +
+              " · " +
+              (p.name || "Name pending") +
+              (p.specialty ? " · " + p.specialty : "");
+          }
+        } catch {
+          document.getElementById("prof-line").textContent = "Could not load profile.";
+        }
+
+        try {
+          const a = await getAppointments();
+          document.getElementById("appts").innerHTML = a.appointments
+            .map(
+              (x) =>
+                `<div class="card" style="margin-bottom:0.75rem;padding:1rem"><strong>${x.patient}</strong> — ${x.reason}<br/><span class="muted">${x.time} · ${x.status}</span></div>`
+            )
+            .join("");
+        } catch {
+          document.getElementById("appts").textContent = "Could not load appointments.";
+        }
+
+        try {
+          const q = await getPatientQueries();
+          document.getElementById("queries").innerHTML = q.queries
+            .map((x) => `<p><strong>#${x.id}</strong> ${x.summary} <span class="muted">(${x.received})</span></p>`)
+            .join("");
+        } catch {
+          document.getElementById("queries").textContent = "Could not load queries.";
+        }
+      })();
+    </script>
+  </body>
+</html>

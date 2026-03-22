@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Planner Agent · Healthcare Planning Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="top-nav">
+      <a href="/doctor.html" class="brand">← Doctor</a>
+      <nav class="nav-links"><a href="/dashboard.html" class="btn btn-ghost">Dashboard</a></nav>
+    </header>
+    <main class="container" style="max-width: 800px">
+      <h1>Planner Agent</h1>
+      <p class="muted">
+        LangChain agent with vector search, medical retriever, and a mock task validator. Output is structured as JSON with steps
+        and a final plan.
+      </p>
+
+      <div class="card">
+        <div class="form-group">
+          <label for="goal">Healthcare goal</label>
+          <textarea id="goal" placeholder="e.g. Suggest treatment options for type 2 diabetes in a newly diagnosed adult"></textarea>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-run">Generate plan</button>
+      </div>
+
+      <div class="loader-wrap" id="load">
+        <div class="spinner"></div>
+        <span>Running agent + structured planner…</span>
+      </div>
+
+      <div class="panel hidden" id="out">
+        <p><span class="confidence-badge">Confidence: <span id="conf"></span></span></p>
+        <h3 style="margin-top: 0">Steps</h3>
+        <div class="steps-visual" id="steps"></div>
+        <h3>Final plan</h3>
+        <p id="final"></p>
+        <h3>Agent summary</h3>
+        <div class="json-view" id="reason"></div>
+        <h3>Full JSON</h3>
+        <div class="json-view" id="json"></div>
+      </div>
+      <p id="err" class="error hidden"></p>
+    </main>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+      (async () => {
+        const s = await requireAuth();
+        if (!s || !requireRole(s, "doctor", "/dashboard.html")) return;
+
+        document.getElementById("btn-run").addEventListener("click", async () => {
+          const goal = document.getElementById("goal").value.trim();
+          const load = document.getElementById("load");
+          const err = document.getElementById("err");
+          err.classList.add("hidden");
+          document.getElementById("out").classList.add("hidden");
+          load.classList.add("active");
+          try {
+            const r = await runPlanner(goal);
+            document.getElementById("out").classList.remove("hidden");
+            document.getElementById("conf").textContent = r.confidence != null ? r.confidence : "—";
+            const stepsEl = document.getElementById("steps");
+            stepsEl.innerHTML = "";
+            (r.steps || []).forEach((st) => {
+              const row = document.createElement("div");
+              row.className = "step-row";
+              row.innerHTML = `<span class="step-num">${st.step}</span><div><strong>${st.action}</strong></div><span class="step-status">${st.status}</span>`;
+              stepsEl.appendChild(row);
+            });
+            document.getElementById("final").textContent = r.final_plan || "";
+            document.getElementById("reason").textContent = r.reasoning_summary || "";
+            document.getElementById("json").textContent = JSON.stringify(r, null, 2);
+          } catch (e) {
+            err.textContent = e.message || String(e);
+            err.classList.remove("hidden");
+          } finally {
+            load.classList.remove("active");
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
