@@ -34,6 +34,7 @@ def _get_llm() -> ChatGroq:
 
 @tool
 def vector_search_tool(query: str) -> str:
+    """Search vector database for relevant healthcare documents."""
     docs = similarity_search(query, k=4)
     if not docs:
         return "No relevant documents found."
@@ -46,6 +47,7 @@ def vector_search_tool(query: str) -> str:
 
 @tool
 def medical_knowledge_retriever(query: str) -> str:
+    """Retrieve medical knowledge related to symptoms or condition."""
     docs = similarity_search(query, k=3, filter_meta={"type": "medical"})
     if not docs:
         docs = similarity_search(query, k=3)
@@ -56,6 +58,7 @@ def medical_knowledge_retriever(query: str) -> str:
 
 @tool
 def task_validator(subtasks: str) -> str:
+    """Validate generated medical subtasks for safety and completeness."""
     t = subtasks.strip().lower()
     if len(t) < 10:
         return "INVALID: subtasks too short."

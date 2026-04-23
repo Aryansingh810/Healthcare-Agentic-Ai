@@ -95,5 +95,4 @@ requirements.txt
 
 ## Notes
 
-- This is an **educational** demo; it is **not** medical advice or a substitute for licensed care.
 - No web scraping, no FaceID or social login — local username/password only.
