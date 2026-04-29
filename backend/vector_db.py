@@ -10,7 +10,7 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 INDEX_DIR = DATA_DIR / "faiss_index"
 KNOWLEDGE_FILE = DATA_DIR / "medical_knowledge.json"
 
-_embeddings: HuggingFaceEmbeddings | None = None
+_embeddings= None
 _vectorstore: FAISS | None = None
 
 

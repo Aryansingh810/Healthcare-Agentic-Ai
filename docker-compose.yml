@@ -4,8 +4,17 @@ services:
   healthcare-app:
     build: .
     container_name: healthcare-container
+
     ports:
       - "5000:5000"
+
     env_file:
       - .env
+
+    volumes:
+      - ./backend/data:/app/backend/data
+
     restart: always
+
+    environment:
+      - PYTHONUNBUFFERED=1
