@@ -8,3 +8,4 @@ groq
 requests
 pytesseract
 Pillow
+sentence-transformers
