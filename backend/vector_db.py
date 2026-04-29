@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import FakeEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 
@@ -14,14 +14,10 @@ _embeddings: HuggingFaceEmbeddings | None = None
 _vectorstore: FAISS | None = None
 
 
-def _get_embeddings() -> HuggingFaceEmbeddings:
+def _get_embeddings():
     global _embeddings
     if _embeddings is None:
-        _embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={"normalize_embeddings": True},
-        )
+        _embeddings = FakeEmbeddings(size=384)
     return _embeddings
 
 

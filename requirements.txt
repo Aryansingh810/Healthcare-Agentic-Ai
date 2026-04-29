@@ -1,11 +1,12 @@
 flask
 flask-cors
-python-dotenv
+werkzeug
 langchain
 langchain-community
+langchain-core
 langchain-groq
-groq
-requests
+faiss-cpu
+python-dotenv
+pydantic
+pillow
 pytesseract
-Pillow
-sentence-transformers
