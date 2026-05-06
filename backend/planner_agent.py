@@ -106,15 +106,17 @@ Include a disclaimer that this is not medical advice.
     
 def run_planner_agent(goal: str) -> dict[str, Any]:
     goal = (goal or "").strip()
+
     if not goal:
         return {
             "goal": "",
             "steps": [],
             "final_plan": "",
-            "error": "Empty goal"
+            "error": "Empty goal",
+            "confidence": 0.0
         }
 
-    # 🔴 STEP 1: Run agent safely
+    # ✅ STEP 1: Safe LLM call (NO LangChain agent)
     try:
         llm = _get_llm()
         raw = llm.invoke(f"Healthcare planning goal: {goal}")
@@ -122,16 +124,7 @@ def run_planner_agent(goal: str) -> dict[str, Any]:
     except Exception as e:
         summary = f"Basic healthcare plan for: {goal}"
 
-    except Exception as e:
-        return {
-            "goal": goal,
-            "steps": [],
-            "final_plan": "",
-            "error": f"AGENT FAILED: {str(e)}",
-            "confidence": 0.0,
-        }
-
-    # 🟢 STEP 2: Generate plan (safe part)
+    # ✅ STEP 2: Generate structured plan
     try:
         data = _structured_plan(goal, summary)
         data["reasoning_summary"] = summary
