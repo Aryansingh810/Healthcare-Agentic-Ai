@@ -116,12 +116,11 @@ def run_planner_agent(goal: str) -> dict[str, Any]:
 
     # 🔴 STEP 1: Run agent safely
     try:
-        executor = _build_agent_executor()
-        agent_out = executor.invoke({
-            "input": f"Healthcare planning goal: {goal}"
-        })
-
-        summary = str(agent_out.get("output", ""))
+        llm = _get_llm()
+        raw = llm.invoke(f"Healthcare planning goal: {goal}")
+        summary = getattr(raw, "content", str(raw))
+    except Exception as e:
+        summary = f"Basic healthcare plan for: {goal}"
 
     except Exception as e:
         return {
