@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import json
 from typing import Any
 
 from langchain.agents import AgentExecutor, create_tool_calling_agent
@@ -12,8 +11,6 @@ from pydantic import BaseModel, Field
 
 from vector_db import similarity_search
 
-
-# ---------------- MODELS ---------------- #
 
 class PlanStepModel(BaseModel):
     step: int
@@ -27,152 +24,152 @@ class PlannerJSON(BaseModel):
     final_plan: str = ""
 
 
-# ---------------- LLM ---------------- #
-
 def _get_llm() -> ChatGroq:
     api_key = os.environ.get("GROQ_API_KEY", "")
     if not api_key:
         raise RuntimeError("GROQ_API_KEY is not set")
+    model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+    return ChatGroq(api_key=api_key, model=model, temperature=0.2)
 
-    return ChatGroq(
-        api_key=api_key,
-        model=os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant"),
-        temperature=0.2
-    )
-
-
-# ---------------- TOOLS ---------------- #
 
 @tool
 def vector_search_tool(query: str) -> str:
+    """Search vector database for relevant healthcare documents."""
     docs = similarity_search(query, k=4)
     if not docs:
         return "No relevant documents found."
-
-    return "\n".join([d.page_content for d in docs])
+    parts = []
+    for i, d in enumerate(docs, 1):
+        meta = d.metadata or {}
+        parts.append(f"[{i}] ({meta.get('type', 'doc')}) {d.page_content}")
+    return "\n".join(parts)
 
 
 @tool
 def medical_knowledge_retriever(query: str) -> str:
-    docs = similarity_search(query, k=3)
+    """Retrieve medical knowledge related to symptoms or condition."""
+    docs = similarity_search(query, k=3, filter_meta={"type": "medical"})
     if not docs:
-        return "No data found."
-
-    return "\n".join([d.page_content for d in docs])
+        docs = similarity_search(query, k=3)
+    if not docs:
+        return "No medical knowledge retrieved."
+    return "\n".join(f"- {d.page_content}" for d in docs)
 
 
 @tool
 def task_validator(subtasks: str) -> str:
-    if len(subtasks.strip()) < 10:
-        return "INVALID"
+    """Validate generated medical subtasks for safety and completeness."""
+    t = subtasks.strip().lower()
+    if len(t) < 10:
+        return "INVALID: subtasks too short."
+    issues = []
+    if "consult" not in t and "physician" not in t and "doctor" not in t:
+        issues.append("Consider explicit in-person consultation.")
+    status = "VALID" if not issues else "NEEDS_REVIEW: " + "; ".join(issues)
+    return status
 
-    if "doctor" not in subtasks.lower():
-        return "NEEDS_REVIEW"
-
-    return "VALID"
-
-
-# ---------------- AGENT ---------------- #
 
 def _build_agent_executor() -> AgentExecutor:
     llm = _get_llm()
-
     tools = [vector_search_tool, medical_knowledge_retriever, task_validator]
+    system = """You are a healthcare planning assistant agent. Use tools to gather evidence.
+Follow this reasoning order:
+1) Understand the medical context (use medical_knowledge_retriever / vector_search_tool).
+2) Retrieve supporting data from the vector database.
+3) Propose concrete sub-tasks as plain text.
+4) Call task_validator with a summary of your sub-tasks.
+5) Summarize a safe, stepwise execution plan (non-prescriptive; remind user to seek professional care).
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a healthcare planning assistant."),
-        ("human", "{input}"),
-        MessagesPlaceholder(variable_name="agent_scratchpad"),
-    ])
-
+After tools, respond with a concise final summary of the plan in plain English (the app will structure JSON separately)."""
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system),
+            ("human", "{input}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ]
+    )
     agent = create_tool_calling_agent(llm, tools, prompt)
-
-    return AgentExecutor(
-        agent=agent,
-        tools=tools,
-        verbose=False,
-        handle_parsing_errors=True
-    )
+    return AgentExecutor(agent=agent, tools=tools, verbose=False, max_iterations=8, handle_parsing_errors=True)
 
 
-# ---------------- JSON PARSER ---------------- #
-
-def _structured_plan(goal: str, summary: str) -> PlannerJSON:
+def _structured_plan(goal: str, agent_summary: str) -> PlannerJSON:
     llm = _get_llm()
+    prompt = f"""Goal: {goal}
 
-    prompt = f"""
-Goal: {goal}
+Agent research summary:
+{agent_summary}
 
-Summary:
-{summary}
+Produce JSON matching the schema with exactly 5 steps numbered 1-5:
+1 Understand the medical context
+2 Retrieve relevant data from the vector database  
+3 Generate sub-tasks
+4 Validate steps  
+5 Produce a final execution plan
 
-Return ONLY JSON:
-{{
-  "goal": "...",
-  "steps": [
-    {{"step":1,"action":"...","status":"done"}}
-  ],
-  "final_plan": "..."
-}}
-"""
-
+Each step must have action and status (e.g. pending/done). final_plan must be a clear, safe narrative plan.
+Include disclaimer that this is not medical advice."""
     try:
-        res = llm.invoke(prompt)
-        text = res.content if hasattr(res, "content") else str(res)
-
-        # Extract JSON safely
-        start = text.find("{")
-        end = text.rfind("}") + 1
-
-        if start != -1 and end != -1:
-            data = json.loads(text[start:end])
-            return PlannerJSON(**data)
-
+        structured = llm.with_structured_output(PlannerJSON)
+        return structured.invoke(prompt)
     except Exception:
-        pass
+        raw = llm.invoke(
+            prompt
+            + "\n\nRespond with ONLY valid JSON matching keys: goal, steps (array of step, action, status), final_plan."
+        )
+        content = getattr(raw, "content", str(raw))
+        start = content.find("{")
+        end = content.rfind("}") + 1
+        if start >= 0 and end > start:
+            return PlannerJSON.model_validate_json(content[start:end])
+        raise
 
-    # ✅ ALWAYS RETURN SAFE FALLBACK (IMPORTANT FOR DEMO)
-    return PlannerJSON(
-        goal=goal,
-        steps=[
-            {"step": 1, "action": "Understand condition", "status": "done"},
-            {"step": 2, "action": "Review medical info", "status": "done"},
-            {"step": 3, "action": "Create plan", "status": "done"},
-            {"step": 4, "action": "Validate safety", "status": "done"},
-            {"step": 5, "action": "Final recommendation", "status": "done"},
-        ],
-        final_plan=f"Basic healthcare guidance for {goal}. Consult a doctor. Not medical advice."
-    )
-
-
-# ---------------- MAIN ---------------- #
 
 def run_planner_agent(goal: str) -> dict[str, Any]:
-    if not goal.strip():
-        return {"error": "Empty goal", "confidence": 0}
+    goal = (goal or "").strip()
+    if not goal:
+        return {"goal": "", "steps": [], "final_plan": "", "error": "Empty goal"}
 
     try:
         executor = _build_agent_executor()
-
-        result = executor.invoke({
-            "input": f"Create a healthcare plan for: {goal}"
-        })
-
-        summary = result.get("output", "")
-
+        agent_out = executor.invoke({"input": f"Healthcare planning goal: {goal}"})
+        summary = str(agent_out.get("output", ""))
         plan = _structured_plan(goal, summary)
-
         data = plan.model_dump()
         data["reasoning_summary"] = summary
-        data["confidence"] = 0.9
-
+        data["confidence"] = 0.85
         return data
-
+    except RuntimeError as e:
+        if "GROQ_API_KEY" in str(e):
+            return _mock_planner(goal)
+        raise
     except Exception as e:
         return {
             "goal": goal,
             "steps": [],
             "final_plan": "",
             "error": str(e),
-            "confidence": 0.0
+            "confidence": 0.0,
         }
+
+
+def _mock_planner(goal: str) -> dict[str, Any]:
+    steps = [
+        {"step": 1, "action": "Understand the medical context for the stated goal", "status": "done"},
+        {"step": 2, "action": "Retrieve relevant data from vector database (demo mode)", "status": "done"},
+        {"step": 3, "action": "Generate sub-tasks and education points", "status": "done"},
+        {"step": 4, "action": "Validate steps with task validator (mock)", "status": "done"},
+        {"step": 5, "action": "Produce final execution plan outline", "status": "done"},
+    ]
+    return {
+        "goal": goal,
+        "steps": steps,
+        "final_plan": (
+            f"[Demo mode — set GROQ_API_KEY] Outline for: {goal}. "
+            "Review evidence-based guidelines, confirm diagnoses with a clinician, "
+            "personalize therapy, and schedule follow-up. This is not medical advice."
+        ),
+        "reasoning_summary": "Mock planner: configure Groq API for full agent + LLM output.",
+        "confidence": 0.5,
+    }
+
+
