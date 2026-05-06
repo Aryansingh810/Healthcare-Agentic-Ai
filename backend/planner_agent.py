@@ -118,21 +118,30 @@ Include a disclaimer that this is not medical advice.
 def run_planner_agent(goal: str) -> dict[str, Any]:
     goal = (goal or "").strip()
     if not goal:
-        return {"goal": "", "steps": [], "final_plan": "", "error": "Empty goal"}
+        return {
+            "goal": "",
+            "steps": [],
+            "final_plan": "",
+            "error": "Empty goal"
+        }
 
     try:
         executor = _build_agent_executor()
         agent_out = executor.invoke({"input": f"Healthcare planning goal: {goal}"})
         summary = str(agent_out.get("output", ""))
-        plan = _structured_plan(goal, summary)
-        data = plan.model_dump()
+
+        data = _structured_plan(goal, summary)
+
         data["reasoning_summary"] = summary
         data["confidence"] = 0.85
+
         return data
+
     except RuntimeError as e:
         if "GROQ_API_KEY" in str(e):
             return _mock_planner(goal)
         raise
+
     except Exception as e:
         return {
             "goal": goal,
