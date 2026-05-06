@@ -92,36 +92,27 @@ After tools, respond with a concise final summary of the plan in plain English (
     return AgentExecutor(agent=agent, tools=tools, verbose=False, max_iterations=8, handle_parsing_errors=True)
 
 
-def _structured_plan(goal: str, agent_summary: str) -> PlannerJSON:
+def _structured_plan(goal: str, agent_summary: str):
     llm = _get_llm()
+
     prompt = f"""Goal: {goal}
 
 Agent research summary:
 {agent_summary}
 
-Produce JSON matching the schema with exactly 5 steps numbered 1-5:
-1 Understand the medical context
-2 Retrieve relevant data from the vector database  
-3 Generate sub-tasks
-4 Validate steps  
-5 Produce a final execution plan
+Create a clear, step-by-step healthcare plan. Keep it simple and safe.
+Include a disclaimer that this is not medical advice.
+"""
 
-Each step must have action and status (e.g. pending/done). final_plan must be a clear, safe narrative plan.
-Include disclaimer that this is not medical advice."""
-    try:
-        structured = llm.with_structured_output(PlannerJSON)
-        return structured.invoke(prompt)
-    except Exception:
-        raw = llm.invoke(
-            prompt
-            + "\n\nRespond with ONLY valid JSON matching keys: goal, steps (array of step, action, status), final_plan."
-        )
-        content = getattr(raw, "content", str(raw))
-        start = content.find("{")
-        end = content.rfind("}") + 1
-        if start >= 0 and end > start:
-            return PlannerJSON.model_validate_json(content[start:end])
-        raise
+    raw = llm.invoke(prompt)
+    content = getattr(raw, "content", str(raw))
+
+    return {
+        "goal": goal,
+        "steps": [],
+        "final_plan": content,
+    }
+    
 
 
 def run_planner_agent(goal: str) -> dict[str, Any]:
