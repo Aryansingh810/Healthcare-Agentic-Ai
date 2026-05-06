@@ -7,21 +7,12 @@ from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
 from langchain_groq import ChatGroq
-from pydantic import BaseModel, Field
+
 
 from vector_db import similarity_search
 
 
-class PlanStepModel(BaseModel):
-    step: int
-    action: str
-    status: str
 
-
-class PlannerJSON(BaseModel):
-    goal: str = ""
-    steps: list[PlanStepModel] = Field(default_factory=list)
-    final_plan: str = ""
 
 
 def _get_llm() -> ChatGroq:
